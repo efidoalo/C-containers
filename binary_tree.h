@@ -6,7 +6,7 @@
  * to be stored throughout the tree.
  * self balancing insertion and deletion
  * ensures optimum search.
- * Date: 2/11/2016
+ * Date: 2/11/2016, ammended and tested 11/02/2017
  *
  ******************************************/
 
