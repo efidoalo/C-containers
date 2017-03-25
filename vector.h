@@ -28,7 +28,7 @@ struct vector
 };
 
 /* append vector container with the value val */
-void push_back(struct vector *vect, void *value_ptr)
+void vect_push_back(struct vector *vect, void *value_ptr)
 {
   /* if size=capacity=0 */
   if (vect->capacity==0) {
@@ -57,7 +57,7 @@ void push_back(struct vector *vect, void *value_ptr)
 /* decrements vec->size by the value of n, 
    no reallocation is performed so that
    the capacity of the vector is unchanged.  */
-void pop_back(struct vector *vec, unsigned int n)
+void vect_pop_back(struct vector *vec, unsigned int n)
 {
   if (vec->size>=n) 
     vec->size-=n; 
@@ -65,7 +65,7 @@ void pop_back(struct vector *vec, unsigned int n)
 
 /* frees memory and sets size=capacity=0,
     */
-void clear(struct vector *vec) 
+void clear_vect(struct vector *vec) 
 {
   if (vec->capacity>0) {
     free(vec->elem);
@@ -80,7 +80,7 @@ void clear(struct vector *vec)
    reallocation if VEC_INITCAPACITY is too low for your needs). 
    use clear() instead of newsize=0. newsize must be greater
    thsan zero. */
-void resize(struct vector *vec, int newsize)
+void resize_vect(struct vector *vec, int newsize)
 {
   if (newsize<=vec->capacity)
     vec->size=newsize;
@@ -102,17 +102,17 @@ void resize(struct vector *vec, int newsize)
 }
 
 /* element access [no range checking performed] */
-void *at(struct vector *vec, int index)
+void *vect_at(struct vector *vec, int index)
 {
   return ((char *)vec->elem) + index*vec->elem_size;
 }
 
-void *read(struct vector *vec, int index)
+void *vect_read(struct vector *vec, int index)
 {
   return ((char *)vec->elem) + index*vec->elem_size;
 }
 
-void write(struct vector *vec, int index, void *value_ptr)
+void vect_write(struct vector *vec, int index, void *value_ptr)
 {
   memcpy(((char *)vec->elem)+(index*vec->elem_size), 
          value_ptr, vec->elem_size);
@@ -120,7 +120,7 @@ void write(struct vector *vec, int index, void *value_ptr)
 
 /* sets the first size entries of the vec->elem 
    pointer that contain the entries to zero */
-void setnull(struct vector *vec)
+void vect_setnull(struct vector *vec)
 {
   char *temp = (char *)malloc(vec->size*vec->elem_size);
   for (int i=0; i<vec->size*vec->elem_size; ++i)
@@ -132,7 +132,7 @@ void setnull(struct vector *vec)
 /* returns vector of size size, 
    with all of these elemnts initialized to
    value_ptr, each elemnt is of size elem_size */
-struct vector *init(int size, void *value_ptr, int elem_size)
+struct vector *init_vect(int size, void *value_ptr, int elem_size)
 {
   struct vector *new_vect = malloc(sizeof(struct vector));
   new_vect->size=size;
@@ -148,17 +148,17 @@ struct vector *init(int size, void *value_ptr, int elem_size)
   return new_vect;
 }
 
-int size(struct vector *vec)
+int vect_size(struct vector *vec)
 {
   return vec->size;
 }
 
-int capacity(struct vector *vec)
+int vect_capacity(struct vector *vec)
 {
   return vec->capacity;	
 }
 
-int elem_size(struct vector *vec)
+int vect_elem_size(struct vector *vec)
 {
   return vec->elem_size;
 }
@@ -167,7 +167,7 @@ int elem_size(struct vector *vec)
    that had been previously dynamically allocated */
 void free_vect(struct vector *vect)
 {
-  clear(vect);
+  clear_vect(vect);
   free(vect);
 }
 #endif
