@@ -26,11 +26,14 @@ struct doubly_linked_list
   struct link *end;  /* points to one beyond the last link */
   int elem_size;     /* specifies the constant size (in bytes) of each entry */
   int size;          /* number if elements/entries in the list */
+  void *(*compare)(void *, void *);//compares link->val data types,
+                                   // returns the greater data type or null if
+                                   // equal
 };
 
 /* returns a doubly_linked_list initialized to 0,0,elem_size. use this function
    for initialization of doubly_linked_lists, elem_size=sizeof(type) */
-struct doubly_linked_list *init(int elem_size)
+struct doubly_linked_list *init_dlist(int elem_size, void *(*compare)(void *, void *))
 {
   struct doubly_linked_list* list = malloc(sizeof(struct doubly_linked_list));
   list->beg = malloc(sizeof(struct link));
@@ -44,16 +47,18 @@ struct doubly_linked_list *init(int elem_size)
   list->end = malloc(sizeof(struct link));
   list->end->val=0;
   list->end->succ=0;
-  list->end->prev = list->beg; // end link has been allocated but its val member is a null pointer.
+  list->end->prev = list->beg; // end link has been allocated but its val member 
+                               // is a null pointer.
   list->beg->succ = list->end;
   list->elem_size = elem_size;
   list->size = 0; 
+  list->compare = compare;
   return list;
 }
 
 /* inserts a link into the list at the end, entry/element value
    equal to *value_ptr */
-void push_back(struct doubly_linked_list *list, void *value_ptr)
+void dlist_push_back(struct doubly_linked_list *list, void *value_ptr)
 {
   if ( list->size==0 ) {
     memcpy(list->beg->val, value_ptr, list->elem_size);
@@ -72,10 +77,10 @@ void push_back(struct doubly_linked_list *list, void *value_ptr)
 
 /* inserts link at front of list having value identical to that at address
    value_ptr. This function adjusts list->beg. */
-void push_front(struct doubly_linked_list *list, void *value_ptr)
+void dlist_push_front(struct doubly_linked_list *list, void *value_ptr)
 {
   if (list->size==0) 
-    push_back(list,value_ptr);
+    dlist_push_back(list,value_ptr);
   else {
     struct link *newlink_addr = (struct link *)malloc(sizeof(struct link));
     newlink_addr->val = malloc(list->elem_size);
@@ -89,7 +94,7 @@ void push_front(struct doubly_linked_list *list, void *value_ptr)
 }
 
 /* removes the final link from the list */
-void pop_back(struct doubly_linked_list *list)
+void dlist_pop_back(struct doubly_linked_list *list)
 {
   if (list->size==0)
     return;
@@ -111,12 +116,12 @@ void pop_back(struct doubly_linked_list *list)
 }
 
 /* removes the first link from the list */
-void pop_front(struct doubly_linked_list *list)
+void dlist_pop_front(struct doubly_linked_list *list)
 {
   if (list->size==0) 
     return;
   else if (list->size==1) {
-    pop_back(list);	  
+    dlist_pop_back(list);	  
   } 
   else {
     struct link *temp = list->beg;
@@ -131,15 +136,15 @@ void pop_front(struct doubly_linked_list *list)
 /* inserts a link with the value pointed to by value_ptr at the position
    just before link_addr in the link.
    returns address of inserted link     */
-struct link *insert(struct doubly_linked_list *list, struct link *link_addr, 
+struct link *dlist_insert(struct doubly_linked_list *list, struct link *link_addr, 
 	    void* value_ptr)
 {
   if (link_addr==list->beg) {
-    push_front(list, value_ptr);
+    dlist_push_front(list, value_ptr);
     return list->beg;
   }
   else if (link_addr==list->end) {
-    push_back(list, value_ptr);
+    dlist_push_back(list, value_ptr);
     return list->end->prev;
   }
   else {
@@ -155,9 +160,10 @@ struct link *insert(struct doubly_linked_list *list, struct link *link_addr,
   }
 }
 
+ 
 /* erases the link from the list pointed to by link_addr.
    link_addr MUST NOT BE list->end, if someone passes this the fucntion does nothing  */
-void erase(struct doubly_linked_list *list, struct link *link_addr)
+void dlist_erase(struct doubly_linked_list *list, struct link *link_addr)
 {
   /* dummy safe */
   if (link_addr==list->end)
@@ -165,7 +171,7 @@ void erase(struct doubly_linked_list *list, struct link *link_addr)
   if ( (link_addr==0) ||   (list->size==0)  )
     return;
   else if (link_addr==list->beg) {
-    pop_front(list);
+    dlist_pop_front(list);
   }
   else {
     link_addr->prev->succ = link_addr->succ;
@@ -176,31 +182,31 @@ void erase(struct doubly_linked_list *list, struct link *link_addr)
   }
 }
 
-int size(struct doubly_linked_list *list)
+int dlist_size(struct doubly_linked_list *list)
 {
   return list->size;
 }
 
-int data_size(struct doubly_linked_list *list)
+int dlist_data_size(struct doubly_linked_list *list)
 {
   return list->elem_size;
 }
 
-struct link *beg(struct doubly_linked_list *list)
+struct link *dlist_beg(struct doubly_linked_list *list)
 {
   return list->beg;
 }
 
-struct link *end(struct doubly_linked_list *list)
+struct link *dlist_end(struct doubly_linked_list *list)
 {
   return list->end;
 }
 
 /* empties container  (size==0) */
-void clear(struct doubly_linked_list *list)
+void clear_dlist(struct doubly_linked_list *list)
 {
-  while (size(list))
-    erase(list, beg(list));
+  while (dlist_size(list))
+    dlist_erase(list, dlist_beg(list));
 }
 
 // frees entire memory allocated for the list.
