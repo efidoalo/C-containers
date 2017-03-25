@@ -8,6 +8,9 @@
  *
  ************************************************/
 
+#ifndef __LINKED_LIST_H_INCLUDED__
+#define __LINKED_LIST_H_INCLUDED__
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -31,16 +34,10 @@ struct linked_list
 // creates a singly linked list with zeto entries. but specifies the
 // number of bytes of each elemen held within each node. No memory
 // is allocated for the first node or any susequent nodes.
-struct linked_list *null_init(int elem_size, void *(*compare)(void *v1, void *v2))
+struct linked_list *null_init_list(int elem_size, void *(*compare)(void *v1, void *v2))
 {
   struct linked_list *newlist = malloc(sizeof(struct linked_list));
-  struct node *root_node = malloc(sizeof(struct node));
-  root_node->val = malloc(elem_size);
-  unsigned char nullInit[elem_size];
-  for (int i=0; i<elem_size; ++i) 
-    nullInit[i] = 0;
-  memcpy(root_node->val, &(nullInit[0]), elem_size);
-  newlist->first = root_node;
+  newlist->first = 0;
   newlist->size = 0;
   newlist->data_size = elem_size;
   newlist->compare = compare;
@@ -50,11 +47,12 @@ struct linked_list *null_init(int elem_size, void *(*compare)(void *v1, void *v2
 // initiate first node in the list wiht the value piointer to by the val
 // pointer. elem_size gives the number of bytes that is stored within each
 // node.
-struct linked_list *init(int data_size, void* value_ptr, void *(*compare)(void *v1, void *v2))
+struct linked_list *init_list(int data_size, void* value_ptr, void *(*compare)(void *v1, void *v2))
 {
   struct linked_list *newlist = malloc(sizeof(struct linked_list));
   struct node *root_node = malloc(sizeof(struct node));
   root_node->val = malloc(data_size);
+  root_node->succ = 0;
   memcpy(root_node->val, value_ptr, data_size);
   newlist->first = root_node;
   newlist->size = 1;
@@ -63,15 +61,37 @@ struct linked_list *init(int data_size, void* value_ptr, void *(*compare)(void *
   return newlist;
 }
 
+// push the object at value_pointer to the start 
+// of the list, regardless of the lists previous contents
+void list_push_front(struct linked_list *list, void *value_pointer)
+{
+  if ((list->size)==0) {
+    list->first = malloc(sizeof(struct node));
+    list->first->val = malloc(list->data_size);
+    memcpy(list->first->val, value_pointer, list->data_size);
+    list->first->succ = 0;
+    ++(list->size);
+    return;
+  }
+  if ((list->size)>0) {
+    struct node *newlink = malloc(sizeof(struct node));
+    newlink->val = malloc(list->data_size);
+    memcpy(newlink->val, value_pointer, list->data_size);
+    newlink->succ = list->first;
+    list->first = newlink;
+    ++(list->size);
+    return;
+  }
+}
+
 // performs ordered isnertion. the returned pointer points to the node int he list
 // that has either been inserted (or id the value was already present in th elsit then the returned pintyer
 // points to the node that is already in the lsit). insert the value given at value_poitner in to the linked list
 // at list. 
-struct node *insert(struct linked_list *list, void *value_pointer)
+struct node *list_insert(struct linked_list *list, void *value_pointer)
 { 
   if (list->size==0) {
-    memcpy(list->first->val, value_pointer, list->data_size);
-    ++(list->size);
+    list_push_front(list, value_pointer);
     return list->first;
   }
   else if ((list->size)>0) {
@@ -121,44 +141,47 @@ struct node *insert(struct linked_list *list, void *value_pointer)
 
 // removed/delete the object given by vlaue_ptr from the lniked_list list.
 // returns 1 to indicate that node has been deleted, 0 otherwise.
-int rem(struct linked_list *list, void *value_ptr)
+int list_rem(struct linked_list *list, void *value_ptr)
 {
   struct node *currNode = list->first, *prevNode = 0;
   void *val=0;
-  while ( (val = list->compare(currNode->val, value_ptr))!=0) {
-    prevNode = currNode;
-    currNode = currNode->succ;
-    if (!currNode)
-      return 0;
-  }
-  if (!prevNode) {
-    list->first = currNode->succ;
-    --(list->size);
+  if (currNode) {
+    while ( (val = list->compare(currNode->val, value_ptr))!=0) {
+      prevNode = currNode;
+      currNode = currNode->succ;
+      if (!currNode)
+        return 0;
+    }
+    if (!prevNode) {
+      list->first = currNode->succ;
+      --(list->size);
+      free(currNode->val);
+      free(currNode);
+      if (!(list->first)) { // null initilize list
+        list->first = malloc(sizeof(struct node));
+        list->first->val = malloc(list->data_size);
+        list->first->succ = 0;
+        unsigned char NULLinit[list->data_size];
+        for (int i=0; i<list->data_size; ++i)
+          NULLinit[i]=0;
+        memcpy(list->first->val, &(NULLinit[0]), list->data_size);
+      }
+      return 1;    
+    }
+    prevNode->succ = currNode->succ;
     free(currNode->val);
     free(currNode);
-    if (!(list->first)) { // null initilize list
-      list->first = malloc(sizeof(struct node));
-      list->first->val = malloc(list->data_size);
-      list->first->succ = 0;
-      unsigned char NULLinit[list->data_size];
-      for (int i=0; i<list->data_size; ++i)
-        NULLinit[i]=0;
-      memcpy(list->first->val, &(NULLinit[0]), list->data_size);
-    }
-    return 1;    
+    --(list->size);
+    return 1;
   }
-  prevNode->succ = currNode->succ;
-  free(currNode->val);
-  free(currNode);
-  --(list->size);
-  return 1;
+  return 0;
 }
 
 // Search the linked list at list for the object at value_ptr.
 // Returned address is either the node that stores value_ptr
 // or the null pointer if the value_ptr is not cointained within
 // the list.
-struct node *search(struct linked_list *list, void *value_ptr)
+struct node *search_list(struct linked_list *list, void *value_ptr)
 {
   struct node *currNode = list->first;
   void *val =0;
@@ -181,3 +204,5 @@ void free_list(struct linked_list *list)
   }
   free(list);
 }
+
+#endif
