@@ -6,7 +6,7 @@
  * to be stored throughout the tree.
  * self balancing insertion and deletion
  * ensures optimum search.
- * Date: 2/11/2016, ammended and tested 11/02/2017
+ * Date: 2/11/2016
  *
  ******************************************/
 
@@ -102,15 +102,15 @@ static void decrement_bitstring(unsigned char *string)
 }
 
 // Node struct used to hold values within a binary_tree struct
-struct node {
+struct node_ {
 
   // pointer to node value
   void *val;
 
   // pointers to associated nodes
-  struct node *parent;
-  struct node *rchild;
-  struct node *lchild;
+  struct node_ *parent;
+  struct node_ *rchild;
+  struct node_ *lchild;
 
 };
 // 
@@ -118,7 +118,7 @@ struct node {
 struct binary_tree {
 
   // pointer to root nodei
-  struct node *root_node;
+  struct node_ *root_node;
 
   /* pointer to a function that takes the addresses of two instantiated objects
   of the data type that each node points to with its val member. The function
@@ -146,7 +146,7 @@ struct binary_tree {
 // available for insertion.
 static int is_available(struct binary_tree *tree, unsigned char *pos, int len)
 {
-  struct node *currNode = tree->root_node;
+  struct node_ *currNode = tree->root_node;
   int index=0;
   while ( index<len-1 ) {
     if ((pos[index]==0) || (pos[index]=='0'))
@@ -199,7 +199,7 @@ static int right_hand_nodecount_inclusive(struct binary_tree *tree,
                                           int index, int depth)
 {
   int NoOfNodes = 0; 
-  struct node *currNode = tree->root_node;
+  struct node_ *currNode = tree->root_node;
   int i=0;
   while (i<=index) {
     if ( (pos[i]==0) || (pos[i]=='l') )
@@ -216,7 +216,7 @@ static int right_hand_nodecount_inclusive(struct binary_tree *tree,
     if (len>0) {
       for (int j=1; j<=len; ++j) {
         for (int i=0; i<pow_2(j); ++i) {
-          struct node *tempNode_track = currNode;
+          struct node_ *tempNode_track = currNode;
           unsigned char *bitstring = int_to_bin_fixed_length(i,j);
           int index = 0;
           int existence = 1; // assume node existence
@@ -256,7 +256,7 @@ static int left_hand_node_count_inclusive(struct binary_tree *tree,
                                           int index, int depth)
 {
   int NoOfNodes = 0; 
-  struct node *currNode = tree->root_node;
+  struct node_ *currNode = tree->root_node;
   int i=0;
   while (i<=index) {
     if ((pos[i]==0) || (pos[i]=='l'))
@@ -272,7 +272,7 @@ static int left_hand_node_count_inclusive(struct binary_tree *tree,
     if (len>0) {
       for (int j=1; j<=len; ++j) {
         for (int i=0; i<pow_2(j); ++i) {
-          struct node *tempNode_track = currNode;
+          struct node_ *tempNode_track = currNode;
           unsigned char *bitstring = int_to_bin_fixed_length(i, j);
           int index = 0;
           int existence = 1; // assume node existence
@@ -380,10 +380,10 @@ static int calc_NoOfNodes(struct binary_tree *tree,
 // given by max_nodepath (which is an array of '1' and '0' specifying right and left branches).
 // returns 1 for a match, 0 otherwise.
 static int is_max_node(struct binary_tree *tree, 
-                       struct node *currNode, 
+                       struct node_ *currNode, 
                        unsigned char *max_nodepath)
 {
-  struct node *track_node = tree->root_node;
+  struct node_ *track_node = tree->root_node;
   int index =0;
   while (max_nodepath[index]!=0) {
     if (max_nodepath[index]=='0')
@@ -400,7 +400,7 @@ static int is_max_node(struct binary_tree *tree,
 // increments the currNode, when currNode is guaranteed to be incrementable.
 // *currNode upon function return points to the node in the tree
 // with the next highest node value.
-static void increment(struct node **currNode)
+static void increment(struct node_ **currNode)
 {
   if ((*currNode)->rchild) {
     (*currNode) = (*currNode)->rchild;
@@ -430,7 +430,7 @@ static void fill_ordered_array(struct binary_tree *tree, // tree
                                unsigned char **min_nodepath_addr, 
                                unsigned char **max_nodepath_addr) 
 {
-  struct node *currNode = tree->root_node;
+  struct node_ *currNode = tree->root_node;
   unsigned char *max_nodepath; 
   unsigned char *min_nodepath; 
   int index=0, diverge=0;  
@@ -529,9 +529,9 @@ static void fill_ordered_array(struct binary_tree *tree, // tree
 
 static void input_new_node(struct binary_tree *tree, 
                            unsigned char *spaceloc, 
-                           int len, struct node *new_node)
+                           int len, struct node_ *new_node)
 {
-  struct node *currNode = tree->root_node;
+  struct node_ *currNode = tree->root_node;
   int index=0;
   while (index<len-1) {
     if (spaceloc[index++]==0)
@@ -550,7 +550,7 @@ static void input_reshaped_data(struct binary_tree *tree,
                                 unsigned char *max_nodepath, 
                                 unsigned char *value_array)
 {
-  struct node *currNode = tree->root_node;
+  struct node_ *currNode = tree->root_node;
   int index=0;
   while (min_nodepath[index]!=0) {
     if (min_nodepath[index++]=='0')
@@ -572,12 +572,12 @@ static void input_reshaped_data(struct binary_tree *tree,
 // data_size bytes. compare and print are pointers to 
 // funcitons that will be the compare and print members 
 // of the binary_tree struct. 
-struct binary_tree *init_null(int data_size,  
+struct binary_tree *init_null_btree(int data_size,  
                               void *(*compare)(void *, void *), 
                               void (*print)(void *) )
 {
 
-  struct node *root_node = malloc(sizeof(struct node));
+  struct node_ *root_node = malloc(sizeof(struct node_));
   // null initialize root_node value
   root_node->val = malloc(data_size);
   char *null_initialize = root_node->val;
@@ -603,12 +603,12 @@ struct binary_tree *init_null(int data_size,
 // given at value_ptr. data size specifies the size in bytes of each 
 // node value in the binary tree. compare and print are pointers 
 // to the functions that compare and print node values [ see binary_tree strut deifinion ]
-struct binary_tree *init(int data_size, 
+struct binary_tree *init_btree(int data_size, 
                          void *rootVal_ptr, 
                          void *(*compare)(void *, void *) , 
                          void (*print)(void *))
 {
-  struct node *root_node = malloc(sizeof(struct node));
+  struct node_ *root_node = malloc(sizeof(struct node_));
   // null initialize root_node value
   root_node->val = malloc(data_size);
   memcpy(root_node->val, rootVal_ptr, data_size);  
@@ -628,7 +628,7 @@ struct binary_tree *init(int data_size,
 // ordered bnary tree isnertion. No insertion occurs if
 // value_ptr is already contained within a node in the tree.
 // balanced insertion.
-void insert(struct binary_tree *tree, void *value_ptr)
+void btree_insert(struct binary_tree *tree, void *value_ptr)
 {
   // if binary tree has no Nodes (assumed root node
   // has been allocated and null initialized)
@@ -640,7 +640,7 @@ void insert(struct binary_tree *tree, void *value_ptr)
     if (tree->NoOfNodes==1) {
       void *val;
       if ((val = tree->compare((tree->root_node)->val, value_ptr))!=0) {
-        struct node* new_node = malloc(sizeof(struct node));
+        struct node_* new_node = malloc(sizeof(struct node_));
         new_node->val = malloc(tree->data_size);
         memcpy(new_node->val, value_ptr, tree->data_size);
         new_node->parent = tree->root_node;
@@ -662,7 +662,7 @@ void insert(struct binary_tree *tree, void *value_ptr)
       unsigned char parloc[depth];
       for (int i=0; i<depth; ++i)
         parloc[i] = 0; // loc of parent node
-      struct node *currNode = tree->root_node;
+      struct node_ *currNode = tree->root_node;
       void *compRes;
       while ((compRes = tree->compare(currNode->val, value_ptr))!=0) {
         if (compRes==currNode->val) {
@@ -670,7 +670,7 @@ void insert(struct binary_tree *tree, void *value_ptr)
             currNode = currNode->lchild;
             parloc[index++]='l';
           }
-          else {  
+          else { 
             break;
           }
         }
@@ -686,7 +686,7 @@ void insert(struct binary_tree *tree, void *value_ptr)
       if (!compRes)
         return;
       // create node to be inserted
-      struct node *new_node = malloc(sizeof(struct node));
+      struct node_ *new_node = malloc(sizeof(struct node_));
       new_node->val = malloc(tree->data_size);
       memcpy(new_node->val, value_ptr, tree->data_size);
       new_node->lchild = 0;
@@ -709,7 +709,7 @@ void insert(struct binary_tree *tree, void *value_ptr)
         } 
         if (parent_depth<depth) {  // if parent node is not on maximum tree depth 
           new_node->parent = currNode;
-          if (compRes==currNode) 
+          if (compRes==currNode->val) 
             currNode->lchild = new_node;
           else
             currNode->rchild = new_node;
@@ -730,7 +730,7 @@ void insert(struct binary_tree *tree, void *value_ptr)
                            &(spaceloc[0]), &(parloc[0]), 
                            depth, value_ptr, 
                            min_nodepath_addr, max_nodepath_addr);
-        struct node *spaceNode = tree->root_node;
+        struct node_ *spaceNode = tree->root_node;
         input_new_node(tree, &(spaceloc[0]), depth, new_node);
         input_reshaped_data(tree, *min_nodepath_addr, *max_nodepath_addr, value_array);
         free(value_array);
@@ -748,9 +748,9 @@ void insert(struct binary_tree *tree, void *value_ptr)
 // delete a specific value from the binary_tree that is given
 // by the data at address value_ptr (tree->data_size bytes of data).
 // Function does nothing if value_ptr is not foudn within the tree.
-void rem(struct binary_tree *tree, void *value_ptr)
+void btree_rem(struct binary_tree *tree, void *value_ptr)
 {
-  struct node *currNode = tree->root_node;
+  struct node_ *currNode = tree->root_node;
   void *val;
   while ( (val = tree->compare(currNode->val, value_ptr))!=0) {
     if (val==currNode->val) {
@@ -771,7 +771,7 @@ void rem(struct binary_tree *tree, void *value_ptr)
   } 
   unsigned char *value_array = malloc((tree->data_size)*(tree->NoOfNodes-1));
   int depth = floor(log_2(tree->NoOfNodes)), index=0;
-  struct node *maxNode = currNode = tree->root_node;
+  struct node_ *maxNode = currNode = tree->root_node;
   while (currNode->lchild) 
     currNode = currNode->lchild; 
   while (maxNode->rchild) 
@@ -828,9 +828,9 @@ void rem(struct binary_tree *tree, void *value_ptr)
 // for the data type/object given at the address value_ptr.
 // Function returns 1 if value_ptr is contained within one of the nodes
 // of the tree, 0 otherwise. 
-int search(struct binary_tree *tree, void *value_ptr)
+int btree_search(struct binary_tree *tree, void *value_ptr)
 {
-  struct node *currNode = tree->root_node;
+  struct node_ *currNode = tree->root_node;
   void *val=0;
   while ( (val = tree->compare(currNode->val, value_ptr))!=0 ) {
     if (val==currNode->val) {
@@ -849,13 +849,14 @@ int search(struct binary_tree *tree, void *value_ptr)
 
 // prints the values in the tree in ascending order.
 // to command line.
-void print(struct binary_tree *tree)
+void print_btree(struct binary_tree *tree)
 {
-  struct node *currNode = tree->root_node;
+  printf("\nprinting tree\n");
+  struct node_ *currNode = tree->root_node;
   while (currNode->lchild)
     currNode = currNode->lchild;
   int index = 0;
-  while (index++<tree->NoOfNodes) {
+  while (index++<(tree->NoOfNodes)) {
     tree->print(currNode->val);
     printf(" ");
     if (index<(tree->NoOfNodes))
@@ -863,9 +864,9 @@ void print(struct binary_tree *tree)
   }
 }
 
-void free_tree(struct binary_tree *tree)
+void free_btree(struct binary_tree *tree)
 {
-  struct node *currNode = tree->root_node, *succNode=0;
+  struct node_ *currNode = tree->root_node, *succNode=0;
   while (currNode->lchild) {
     currNode = currNode->lchild;
   }  
