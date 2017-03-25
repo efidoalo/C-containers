@@ -35,7 +35,7 @@ struct stack *init_stack(int data_size)
 }
 
 // push the value at value_ptr onto the stack
-void push(struct stack *stack, void *value_ptr)
+void stack_push(struct stack *stack, void *value_ptr)
 {
   if (stack->capacity > stack->size) 
     memcpy( &(((char *)stack->data)[(stack->size)*(stack->data_size)]),
@@ -55,7 +55,7 @@ void push(struct stack *stack, void *value_ptr)
 // pops the topmost value off of the stack and returns a pointer
 // to the object, or if the stack is empty does nothing and returns
 // the null pointer. Non null returned pointer must be freed
-void *pop(struct stack *stack)
+void *stack_pop(struct stack *stack)
 {
   if ((stack->size)>0) 
     return memcpy(malloc(stack->data_size),
