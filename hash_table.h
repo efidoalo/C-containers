@@ -4,9 +4,9 @@
  * Contents: Hash  table that uses 
  * buckets of doubly linked lists to 
  * insert and traverse through its internal ekeents.
- * Hash table contains one type of data type/object type 
- * (possibly user defined), although this type is copeltely arbitrary
- * Date: 26/02/2017. not checked or tested.
+ * Hash table keys and values are mey be either 
+ * arbitrary abstract data types or built in types.
+ * Date: 25/03/2017. 
  *
  *************************************/
 
