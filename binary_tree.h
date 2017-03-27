@@ -603,15 +603,14 @@ struct binary_tree *init_null_btree(int data_size,
 // given at value_ptr. data size specifies the size in bytes of each 
 // node value in the binary tree. compare and print are pointers 
 // to the functions that compare and print node values [ see binary_tree strut deifinion ]
-struct binary_tree *init_btree(int data_size, 
-                         void *rootVal_ptr, 
+struct binary_tree *init_btree(int data_size,  
                          void *(*compare)(void *, void *) , 
                          void (*print)(void *))
 {
   struct node_ *root_node = malloc(sizeof(struct node_));
   // null initialize root_node value
   root_node->val = malloc(data_size);
-  memcpy(root_node->val, rootVal_ptr, data_size);  
+  memset(root_node->val, 0, data_size);  
   root_node->parent = 0;
   root_node->rchild = 0;
   root_node->lchild = 0;
@@ -620,7 +619,7 @@ struct binary_tree *init_btree(int data_size,
   new_btree->root_node = root_node;
   new_btree->compare = compare;
   new_btree->data_size = data_size;
-  new_btree->NoOfNodes = 1;
+  new_btree->NoOfNodes = 0;
   new_btree->print = print;
   return new_btree;
 }
@@ -830,6 +829,8 @@ void btree_rem(struct binary_tree *tree, void *value_ptr)
 // of the tree, 0 otherwise. 
 int btree_search(struct binary_tree *tree, void *value_ptr)
 {
+  if (tree->NoOfNodes==0)
+    return 0;
   struct node_ *currNode = tree->root_node;
   void *val=0;
   while ( (val = tree->compare(currNode->val, value_ptr))!=0 ) {
