@@ -867,55 +867,97 @@ void print_btree(struct binary_tree *tree)
 
 void free_btree(struct binary_tree *tree)
 {
-  struct node_ *currNode = tree->root_node, *succNode=0;
-  while (currNode->lchild) {
-    currNode = currNode->lchild;
-  }  
-  if (currNode->rchild) {
-    succNode = currNode->rchild;
-    while (succNode->lchild) 
-      succNode = succNode->lchild;
-  }
-  else {
-    if (currNode->parent) {
-      succNode = currNode;
-      while ((succNode->parent)->rchild==succNode) {
-        succNode = succNode->parent;
-        if (!succNode->parent) {
-          succNode = 0;
-          break;
+        if ((tree->NoOfNodes) == 0) {
+                free((tree->root_node)->val);
+                free(tree->root_node);
         }
-      }
-      if (succNode) 
-        succNode = succNode->parent;        
-    }
-  }
-  free(currNode->val);
-  free(currNode);
-  while (succNode) {
-    currNode = succNode;
-    succNode = 0;
-    if (currNode->rchild) {
-      succNode = currNode->rchild;
-      while (succNode->lchild)
-        succNode = succNode->lchild;
-    }
-    else {
-      if (currNode->parent) {
-        succNode = currNode;
-        while ((succNode->parent)->rchild==succNode) {
-          succNode = succNode->parent;
-          if (!succNode->parent) {
-            succNode = 0;
-            break;
-          }
+        else {
+                int tree_depth = floor(log_2(tree->NoOfNodes));
+                for (int i=tree_depth; i>=0; --i) {
+                        unsigned int NoOfNodes = pow_2(i); // The maximum number of Nodes on the current ith level of the tree
+                        unsigned int bitmask_length = i/8;
+                        if ((i % 8) != 0) {
+                                ++bitmask_length;
+                        }
+                        if (bitmask_length == 0) {
+                                free((tree->root_node)->val);
+                                free(tree->root_node);
+                                continue;
+                        }
+                        for (unsigned int j=0; j<NoOfNodes; ++j) {
+                                struct node_ *curr_node = tree->root_node;
+                                unsigned int directional_bitmask = htonl(j);
+                                unsigned char *directional_indicator = (unsigned char *)(&directional_bitmask);
+                                directional_indicator += (4-bitmask_length);
+                                unsigned int skip_initial_bit_count = 8 - (i%8);
+                                if ((i%8)==0) {
+                                        skip_initial_bit_count = 0;
+                                }
+                                unsigned char first_bitmask = (128 >> skip_initial_bit_count);
+                                unsigned char free_required = 1;
+                                for (int k=0; k<bitmask_length; ++k) {
+                                        if (k==0) {
+                                                for (int l=0; l<(8-skip_initial_bit_count); ++l) {
+                                                        if (((*directional_indicator) & first_bitmask) == 0) {
+                                                                if (curr_node->lchild) {
+                                                                        curr_node = curr_node->lchild;
+                                                                }
+                                                                else {
+                                                                        free_required = 0;
+                                                                        break;
+                                                                }
+                                                        }
+                                                        else {
+                                                                if (curr_node->rchild) {
+                                                                        curr_node = curr_node->rchild;
+                                                                }
+                                                                else {
+                                                                        free_required = 0;
+                                                                        break;
+                                                                }
+                                                        }
+                                                        first_bitmask >>= 1;
+                                                }
+
+                                        }
+                                        else {
+
+                                                for (int l=0; l<8; ++l) {
+                                                        unsigned char curr_bitmask = 128 >> l;
+                                                        if (((*directional_indicator) & curr_bitmask)==0) {
+                                                                if (curr_node->lchild) {
+                                                                        curr_node = curr_node->lchild;
+                                                                }
+                                                                else {
+                                                                        free_required = 0;
+                                                                        break;
+                                                                }
+                                                        }
+                                                        else {
+                                                                if (curr_node->rchild) {
+                                                                        curr_node = curr_node->rchild;
+                                                                }
+                                                                else {
+                                                                        free_required = 0;
+                                                                        break;
+                                                                }
+                                                        }
+                                                }
+
+                                        }
+                                        if (!free_required) {
+                                                break;
+                                        }
+                                        ++directional_indicator;
+                                }
+                                if (!free_required) {
+                                        continue;
+                                }
+                                free(curr_node->val);
+                                free(curr_node);
+                        }
+                }
         }
-        if (succNode)
-          succNode = succNode->parent;
-      }
-    }
-    free(currNode->val);
-    free(currNode);
-  }
+        free(tree);               
 }
 #endif
