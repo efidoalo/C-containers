@@ -367,7 +367,7 @@ static int calc_NoOfNodes(struct binary_tree *tree,
       ++lowest_val;
     }
     for (int i=lowest_val-1; i>=0; --i) 
-      NoOfNodes+=left_hand_node_count_inclusive(tree, 
+      NoOfNodes+=right_hand_node_count_inclusive(tree, 
                                                 &(parloc[0]), 
                                                 currDepth+i, 
                                                 depth );
