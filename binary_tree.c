@@ -17,11 +17,10 @@
 #include <arpa/inet.h>
 #include "binary_tree.h"
 
-// node input pointer is a leaf node of height *height. This function returns the next leaf node
-// in ascending order of value from the input leaf node and updates height to its value. If no leaf
-// node comes after the input leaf node then NULL is returned
 //
-// This function
+// This function determines if there is another leaf node after node having a particular subtree root.
+// heigbt is tracked and either the next leaf node or NULL is returned, depending on if there exists
+// another leaf as part of a particular subtree or not.
 struct node_ * has_right_branch(struct node_ *node, int *height) 
 {
 	int new_height = *height;
@@ -271,27 +270,6 @@ static double log_2(double x)
   }
 }
 
-// incremembt pos so that it defines the next position at the [zero starting] depth
-// len. positions increment from left to right along the tree depth len.
-// pos[0] indicates branch left (0) or right (1) from root node.
-// len must be 1 or greater. 
-static void increment_pos(unsigned char *pos, int len)
-{
-  unsigned char carry = 0;
-  for (int i=len-1; i>=0; --i) {
-    if (pos[i]==0) {
-      pos[i]=1;
-      return;
-    }
-    else {
-      pos[i] = 0;
-      carry = 1;
-    }
-  }
-  if (carry==1) { // should not really rely on this behaviour.
-    printf("\nincrement position overflow! setting pos to zero");
-  }
-}
 
 
 // increments the currNode, when currNode is guaranteed to be incrementable.
