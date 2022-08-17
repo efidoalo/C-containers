@@ -15,42 +15,237 @@
 #include <string.h>
 #include <stdio.h>
 #include <arpa/inet.h>
+#include "binary_tree.h"
 
-struct node_ {
+// node input pointer is a leaf node of height *height. This function returns the next leaf node
+// in ascending order of value from the input leaf node and updates height to its value. If no leaf
+// node comes after the input leaf node then NULL is returned
+//
+// This function
+struct node_ * has_right_branch(struct node_ *node, int *height) 
+{
+	int new_height = *height;
+	if (node->rchild) {
+		node = node->rchild;
+		++new_height;
+		while (node) {
+                        if (node->lchild) {
+                                node = node->lchild;
+                                ++new_height;
+                        }
+                        else if (node->rchild) {
+                                node = node->rchild;
+                                ++new_height;
+                        }       
+                        else {
+                                break;
+                        }
+                }
+		*height = new_height;
+		return node;
+	}
+	else {  
+		if (new_height == 1) {
+			return NULL;
+		}
+		while ( ((node->parent)->lchild != node) || ((node->parent)->rchild == NULL)) {
+			node = node->parent;
+			--new_height;
+			if ((node->parent) == NULL) {
+				return NULL; // root node reached, no leaf node comes after the input leaf node	
+			}
+			if (new_height <= 1) {
 
-  // pointer to node value
-  void *val;
+				return NULL; // subtree has no more leaf nodes
+			}
+		}
+		node = (node->parent)->rchild;
+		while (node) {
+			if (node->lchild) {
+				node = node->lchild;
+				++new_height;
+			}
+			else if (node->rchild) {
+				node = node->rchild;
+				++new_height;
+			}
+			else {
+				break;
+			}
+		}
+		*height = new_height;
+		return node;
+	}	
+	
+}
 
-  // pointers to associated nodes
-  struct node_ *parent;
-  struct node_ *rchild;
-  struct node_ *lchild;
+int calculate_node_height(struct node_ *node)
+{
+	if (node==NULL) {
+		return 0;
+	}
+	int node_height = 1;
+	while (node->lchild) {
+		++node_height;
+		node = node->lchild;
+	}	
+	int max_height = node_height;
+	node = has_right_branch(node, &node_height); // progress to next leaf whilst tracking height
+	while ( node != NULL  ) {
+		if (node_height > max_height) {
+			max_height = node_height;
+		}
+		node = has_right_branch(node, &node_height);
+	}
+	return max_height;
+}
 
-};
-// 
+int calc_balance_factor(struct node_ *node)
+{
+	return calculate_node_height(node->rchild) - calculate_node_height(node->lchild);	
+}
 
-struct binary_tree {
+char *balance_factor(struct node_ *node)
+{
+	return &(node->bf);
+}
 
-  // pointer to root nodei
-  struct node_ *root_node;
+// X = root of subtree to be rotated left
+// Z = right child of X, Z is right heavy on insertion,
+// and Z has height Height(LeftSubtree(X))+2
+//
+// Returns new root of rebalanced subtree
+struct node_ *rotate_left(struct node_ *X, struct node_ *Z)
+{
+	struct node_ *t23 = Z->lchild;
+	X->rchild = t23;
+	if (t23 != NULL) {
+		t23->parent = X;	
+	}
+	Z->lchild = X;
+	X->parent = Z;
+	
+	// 1st case BF(Z)==0 only happens with deletion, not insertion
+	if ((Z->bf) == 0) {
+		X->bf = 1;
+		Z->bf = -1;
+	}
+	else { // second case can happen with insertion or deletion
+		X->bf = 0;
+		Z->bf = 0;
+	}
+	return Z;
+}
 
-  /* pointer to a function that takes the addresses of two instantiated objects
-  of the data type that each node points to with its val member. The function
-  returns the address of the object that is greater. If both objects are
-  considered equal, the null pointer is returned. */
-  void *(*compare) (void *v1, void *v2);
+// X = root of subtree to be rotated right
+// Z = left child of X, Z is left heavy (on insertion) and Z has height
+// equal to Height(RightSubtree(X))+2
+struct node_ *rotate_right(struct node_ *X, struct node_ *Z)
+{
+	struct node_ *t23 = Z->rchild;
+	X->lchild = t23;
+	if (t23 != NULL) {
+		t23->parent = X;
+	}
+	Z->rchild = X;
+	X->parent = Z;
 
-  // pointer to function that takes as a parameter a pointer to an instantiated object
-  // of the data type pointed to by each nodes val member. Function prints the object
-  // pointed to by its parameter to the terminal.
-  void (*print) (void *);
+	// 1st case, BF(Z) == 0, only happens with deletion, not insertion
+	if ((Z->bf)==0) {
+		Z->bf = 1;
+	 	X->bf = -1;	
+	}
+	else { // second xase happens with insertion or deletion
+		X->bf = 0;
+		Z->bf = 0;
+	}
+	return Z;
+}
 
-  // size in bytes of the object stored at each node
-  int data_size;
+//X = root of subtree to be rotated
+//Z = its right child, left heavy with height Height(LeftSubtree(X))+2
+//function returns the root of the rebalanced subtree
+struct node_ *rotate_rightleft(struct node_ *X, struct node_ *Z)
+{
+	// Z is by 2 higher than its sibling
+	struct node_ *Y = Z->lchild; // Inner child of Z
+	// Y is by 1 higher than sibling
+	struct node_ *t3 = Y->rchild;
+	Z->lchild = t3;
+	if (t3 != NULL) {
+		t3->parent = Z;
+	}
+	Y->rchild = Z;
+	Z->parent = Y;
+	struct node_ *t2 = Y->lchild;
+	X->rchild = t2;
+	if (t2 != NULL) {
+		t2->parent = X;
+	}
+	Y->lchild = X;
+	X->parent = Y;
 
-  // Number of total nodes in binary tree
-  int NoOfNodes;
-};
+	// 1st case, BF(Y)==0 only happens with deletion, not insertion
+	if ((Y->bf)==0) {
+		X->bf = 0;
+		Z->bf = 0;
+	}
+	else {
+		// other cases happen with insertion or deletion
+		if ((Y->bf)>0) {
+			X->bf = -1;
+			Z->bf = 0;
+		}
+		else {
+			X->bf = 0;
+			Z->bf = 1;
+		}
+	}
+	Y->bf = 0;
+	return Y;
+}
+
+// X = root of subtree to be balanced
+// Z = left child, right heavy with height Height(RightSubtree(X)) + 2
+// function returns the root node of the balanced subtree
+struct node_ *rotate_leftright(struct node_ *X, struct node_ *Z)
+{
+	struct node_ *Y = Z->rchild; // Inner child of Z
+	struct node_ *t3 = Y->lchild;
+	Z->rchild = t3;
+	if (t3!=NULL) {
+		t3->parent = Z;
+	}
+	Y->lchild = Z;
+	Z->parent = Y;
+	struct node_ *t2 = Y->rchild;
+	X->lchild = t2;
+	if (t2!=NULL) {
+		t2->parent = X;
+	}
+	Y->rchild = X;
+	X->parent = Y;
+
+	//1st case BF(Y) == 0 only happens with deletion, not insertion
+	if ((Y->bf)==0) {
+		X->bf = 9;
+		Z->bf = 0;
+	}
+	else {
+		// other cases happen with insertion or deletion
+		if ((Y->bf)>0) {
+			X->bf = 0;
+			Z->bf = -1;
+		}
+		else {
+			Z->bf = 0;
+			X->bf = 1;
+
+		}
+	}
+	Y->bf = 0;
+	return Y;
+}
 
 // returns 2^exponent, where exponent
 // is a non-negative integer
@@ -73,131 +268,6 @@ static double log_2(double x)
   else {
     double numerator = log(x), denominator = log(2.0);
     return numerator/denominator;
-  }
-}
-// convertes the nonnegative integer into its corresponding binary
-// digitstring of '1's and '0's, least significant bit is at index 0.
-// returned array is dynamically allocted.
-static unsigned char *int_to_bin(int integer)
-{
-  int len;
-  if (integer>0) 
-    len = floor(log_2(integer))+2;
-  else {
-    unsigned char *zero = malloc(2);
-    zero[0] = '0';
-    zero[1] = 0;
-    return zero;
-  }
-  unsigned char *bitstring = malloc(len);
-  int quotient = integer, remainder=0, index=0;
-  while (quotient!=0) {
-    bitstring[index++] = 0x30 + (quotient % 2);
-    quotient = quotient/2;
-  }
-  bitstring[index]=0;
-  return bitstring;
-}
-// converts the nonnegative integer val into its correpsonding binary
-// digiststring of '1's and '0's. The returned digitstring is null terminated
-// , dynamically allocated, and null terminated, with its least significant
-// bit occuring at index 0.
-static unsigned char *int_to_bin_fixed_length(int val, int len)
-{
-  unsigned char *bitstring = malloc(len+1);
-  bitstring[len]=0;
-  for (int i=0; i<len; ++i)
-    bitstring[i]=0x30;
-  int index=0, quotient=val, remainder=0;
-  while (quotient!=0) {
-    bitstring[index++] = 0x30 + (quotient % 2);
-    quotient = quotient/2;
-  }
-  return bitstring;
-}
-// string defines a null terminated binary digitstring (of '0's and '1's).
-// this function decrements the digitstring by 1, whereby the digitstring
-// is to have its most significant bit at index 0.
-static void decrement_bitstring(unsigned char *string)
-{ 
-  int len=0;
-  while (string[len]!=0) 
-    ++len;
-  --len;
-  int index=0;
-  while (len>=0) {
-    if (string[len]=='1') {
-      string[len]='0';
-      return;
-    }
-    else string[len] = '1';
-    --len;
-  }
-}
-
-// Node struct used to hold values within a binary_tree struct
-/*struct node_ {
-
-  // pointer to node value
-  void *val;
-
-  // pointers to associated nodes
-  struct node_ *parent;
-  struct node_ *rchild;
-  struct node_ *lchild;
-
-}; */
-// 
-
-/*struct binary_tree {
-
-  // pointer to root nodei
-  struct node_ *root_node;
-
-  // pointer to a function that takes the addresses of two instantiated objects
-  //of the data type that each node points to with its val member. The function
-  //returns the address of the object that is greater. If both objects are
-  //considered equal, the null pointer is returned. 
-  void *(*compare) (void *v1, void *v2);
-
-  // pointer to function that takes as a parameter a pointer to an instantiated object
-  // of the data type pointed to by each nodes val member. Function prints the object
-  // pointed to by its parameter to the terminal.
-  void (*print) (void *);
-
-  // size in bytes of the object stored at each node
-  int data_size;
-
-  // Number of total nodes in binary tree
-  int NoOfNodes;
-};*/
-
-// pos is the first character of a char array of having length len.
-// the array has values 0 and 1, or '0' and '1', corresponding to left and right branches.
-// the array defines a position in the binary tree. with pos[0] giving the
-// direction to branch from the root node. len must be greater than or equal to 1.
-// returns 0 if node already exists there, 1 if no node exists and the position is 
-// available for insertion.
-static int is_available(struct binary_tree *tree, unsigned char *pos, int len)
-{
-  struct node_ *currNode = tree->root_node;
-  int index=0;
-  while ( index<len-1 ) {
-    if ((pos[index]==0) || (pos[index]=='0'))
-      currNode = currNode->lchild;
-    else 
-      currNode = currNode->rchild;
-    ++index;
-  }
-  if ((pos[index]==0) || (pos[index]=='0')) {
-    if (currNode->lchild)
-      return 0; // position is already taken up
-    else return 1; // no node in position pos
-  } 
-  else if ((pos[index]==1) || (pos[index]=='1')) {
-    if (currNode->rchild)
-      return 0; // no poition available
-    else return 1; // position available
   }
 }
 
@@ -223,213 +293,6 @@ static void increment_pos(unsigned char *pos, int len)
   }
 }
 
-// pos[0], pos[1],...,pos[index] specifies tree node. pos is unsigned char array of length len.
-// this function returns the number of nodes in the tree to the right of the specified node that have
-// a position (initial) substring of {pos[0],..,pos[index]}. That is this function returns 1 plus the number
-// of nodes that decend from the specified node defined by pos that are also greater than (to the right of)
-// the pos node. 
-static int right_hand_nodecount_inclusive(struct binary_tree *tree, 
-                                          unsigned char *pos, 
-                                          int index, int depth)
-{
-  int NoOfNodes = 0; 
-  struct node_ *currNode = tree->root_node;
-  int i=0;
-  while (i<=index) {
-    if ( (pos[i]==0) || (pos[i]=='l') )
-      currNode = currNode->lchild;
-    else currNode = currNode->rchild;
-    ++i;
-  }
-  if (currNode) {
-  ++NoOfNodes;
-
-  if ((currNode = (currNode->rchild))) {
-    ++NoOfNodes;
-    int len = depth-2-index;
-    if (len>0) {
-      for (int j=1; j<=len; ++j) {
-        for (int i=0; i<pow_2(j); ++i) {
-          struct node_ *tempNode_track = currNode;
-          unsigned char *bitstring = int_to_bin_fixed_length(i,j);
-          int index = 0;
-          int existence = 1; // assume node existence
-          while (bitstring[index] !=0 ) {
-            if (bitstring[index++]==0x31) {
-              if (tempNode_track->rchild) 
-                tempNode_track = tempNode_track->rchild;
-              else {
-                existence = 0;
-                break;
-              }
-            }
-            else {
-              if (tempNode_track->lchild) 
-                tempNode_track = tempNode_track->lchild;
-              else {
-                existence = 0;
-                break;
-              }
-            }
-          }
-          if (existence)
-            ++NoOfNodes;
-          free(bitstring);
-        }
-      }
-    }
-  }
-
-  }
-  
-  return NoOfNodes;
-}
-// decend and less than (to the left of) pos, plus pos (inclusive).
-static int left_hand_node_count_inclusive(struct binary_tree *tree,  
-                                          unsigned char *pos, 
-                                          int index, int depth)
-{
-  int NoOfNodes = 0; 
-  struct node_ *currNode = tree->root_node;
-  int i=0;
-  while (i<=index) {
-    if ((pos[i]==0) || (pos[i]=='l'))
-      currNode = currNode->lchild;
-    else currNode = currNode->rchild;
-    ++i;
-  }
-  if (currNode) {
-  ++NoOfNodes;
-  if ((currNode = (currNode->lchild))) {
-    ++NoOfNodes;
-    int len = depth-2-index;
-    if (len>0) {
-      for (int j=1; j<=len; ++j) {
-        for (int i=0; i<pow_2(j); ++i) {
-          struct node_ *tempNode_track = currNode;
-          unsigned char *bitstring = int_to_bin_fixed_length(i, j);
-          int index = 0;
-          int existence = 1; // assume node existence
-          while (bitstring[index] !=0 ) {
-            if (bitstring[index++]==0x31) {
-              if (tempNode_track->rchild)
-                tempNode_track = tempNode_track->rchild;
-              else {
-                existence = 0;
-                break;
-              }
-            }
-            else {
-              if (tempNode_track->lchild)
-                tempNode_track = tempNode_track->lchild;
-              else {
-                existence = 0;
-                break;
-              }
-            }
-          }
-          if (existence)
-            ++NoOfNodes;
-          free(bitstring);
-        }
-      }
-    }
-  }
-  }
-  return NoOfNodes;
-}
-
-// spaceloc defines an array of length len that defines the position in the tree
-// at (0 starting) depth len where there is space for a new node. parloc is an 
-// array of length len that defines the position of the parent node (currently) 
-// in the tree, which is located in the tree at (zero starting) depth len. 
-// This function returns the maximum number of nodes (including the new node to be inserted)
-// that need to be relocated to fit the new node in whilst preserving tree depth.
-static int calc_NoOfNodes(struct binary_tree *tree, 
-                          unsigned char *spaceloc, 
-                          unsigned char *parloc, 
-                          int depth)
-{
-  int currDepth=0, NoOfNodes=0;
-  while ( ((spaceloc[currDepth]==0) && (parloc[currDepth]=='l')) || 
-          ((spaceloc[currDepth]==1) && (parloc[currDepth]=='r')) )  
-    ++currDepth;
-  // spaceloc diverged left
-  if ((spaceloc[currDepth]==0) && (parloc[currDepth]=='r')) {
-    NoOfNodes=0;
-    int lowest_val=1, highest_val=1;
-    while ( (currDepth+lowest_val) < depth ) {
-      if (spaceloc[currDepth+lowest_val]==1)
-      break;
-      ++lowest_val;
-    } 
-    for (int i=lowest_val-1; i>=0; --i) 
-      NoOfNodes += right_hand_nodecount_inclusive(tree, 
-                                                  &(spaceloc[0]), 
-                                                  currDepth+i, 
-                                                  depth );
-    
-    while ( (currDepth+highest_val)<depth) { 
-      if (parloc[currDepth+highest_val]=='l')
-        break;
-      ++highest_val;
-    } 
-    for (int i=highest_val-1; i>=0; --i) 
-      NoOfNodes+=left_hand_node_count_inclusive(tree,  
-                                                &(parloc[0]), 
-                                                currDepth+i, 
-                                                depth );
-    
-  } // parentloc diverged left
-  else {
-    NoOfNodes=0;
-    int lowest_val=1, highest_val=1;
-    while ( (currDepth+highest_val)<depth ) {
-      if (spaceloc[currDepth+highest_val]==0)
-        break;
-      ++highest_val;
-    }
-    for (int i=highest_val-1; i>=0; --i) 
-      NoOfNodes+= left_hand_node_count_inclusive(tree, 
-                                                 &(spaceloc[0]), 
-                                                 currDepth+i, 
-                                                 depth );
-    
-    while ( (currDepth+lowest_val)<depth ) {
-      if (parloc[currDepth+lowest_val]=='r')
-        break;
-      ++lowest_val;
-    }
-    for (int i=lowest_val-1; i>=0; --i) 
-      NoOfNodes+= right_hand_nodecount_inclusive(tree,               // was a call left_hand_node_count_inclusive
-                                                &(parloc[0]), 
-                                                currDepth+i, 
-                                                depth );
-    
-  }
-  return NoOfNodes+2; // 2, 1 for joining top node, 1 for new node.
-}
-
-// function to check if the node object located at currNode matches the nodepath 
-// given by max_nodepath (which is an array of '1' and '0' specifying right and left branches).
-// returns 1 for a match, 0 otherwise.
-static int is_max_node(struct binary_tree *tree, 
-                       struct node_ *currNode, 
-                       unsigned char *max_nodepath)
-{
-  struct node_ *track_node = tree->root_node;
-  int index =0;
-  while (max_nodepath[index]!=0) {
-    if (max_nodepath[index]=='0')
-      track_node = track_node->lchild;
-    else
-      track_node = track_node->rchild;
-    ++index;
-  }   
-  if (track_node == currNode)
-    return 1;
-  else return 0;
-}
 
 // increments the currNode, when currNode is guaranteed to be incrementable.
 // *currNode upon function return points to the node in the tree
@@ -448,156 +311,6 @@ static void increment(struct node_ **currNode)
     (*currNode) = (*currNode)->parent;
     return;
   }
-}
-
-// fill the array of *(node->val) objects with the objects that are contained within each node in the tree
-// (including the node to be inserted) between spaceloc and parloc.
-// min and max nodepath_addr are addresses to store pointers that point to arrays that
-// define the maximum node and minimum node in the tree between spaceloc and parloc (inclusive)
-static void fill_ordered_array(struct binary_tree *tree, // tree
-                               unsigned char *value_array,  // array to be filled (pre allocated)
-                               int total_nodes,             // length of value_array (in objects)
-                               unsigned char *spaceloc,     // array (of 0 and 1s) specifying location of a node to be inserted
-                               unsigned char *parloc,       // array of 'l' and 'r's specifying location of parent node.
-                               int depth,                   // length of spaceloc and parloc
-                               unsigned char *value_ptr,     // pointer to the object/value to be inserted
-                               unsigned char **min_nodepath_addr, 
-                               unsigned char **max_nodepath_addr) 
-{
-  struct node_ *currNode = tree->root_node;
-  unsigned char *max_nodepath; 
-  unsigned char *min_nodepath; 
-  int index=0, diverge=0;  
-  while ( ((spaceloc[index]==0) && (parloc[index]=='l')) ||
-          ((spaceloc[index]==1) && (parloc[index]=='r')) ) 
-    ++index;
-  diverge=index;
-    // spaceloc diverges to the left.
-  if (spaceloc[index]==0) {
-    while (++index<depth) {
-      if (spaceloc[index]==1)  
-        break;  
-    }
-    min_nodepath = malloc(index+1);
-    min_nodepath[index]=0; 
-    for (int i=0; i<index; ++i) { 
-      if (spaceloc[i]==0) 
-        min_nodepath[i] = '0';
-      else min_nodepath[i] = '1';
-    }
-    index = diverge;
-    while (++index<depth) {
-     if (parloc[index]=='l')
-       break;
-    }
-    max_nodepath = malloc(index+1);
-    max_nodepath[index] =0;
-    for (int i=0; i<index; ++i) {
-      if (parloc[i]=='l')
-        max_nodepath[i] = '0';
-      else max_nodepath[i] = '1';
-    }
-  }// spaceloc diverges to the right
-  else {
-    while (++index<depth) {
-      if (parloc[index]=='r') 
-        break;
-    }
-    min_nodepath =  malloc(index+1);
-    min_nodepath[index]=0;
-    for (int i=0; i<index; ++i) {
-      if (parloc[i]=='l')
-        min_nodepath[i] = '0';
-      else min_nodepath[i] = '1';
-    }
-    index = diverge;
-    while  (++index<depth) {
-      if (spaceloc[index]==0)
-        break;
-    }
-    max_nodepath = malloc(index+1);
-    max_nodepath[index]=0;
-    for (int i=0; i<index; ++i)  {
-      if (spaceloc[i]==0)
-        max_nodepath[i] = '0';
-      else max_nodepath[i] = '1';
-    }    
-  }
-  int inserted_newval = 0;
-  currNode = tree->root_node;
-  index=0;
-  while (min_nodepath[index]) {
-    if (min_nodepath[index]=='0') {
-      if (currNode->lchild)
-      currNode = currNode->lchild;
-    }
-    else {
-      if (currNode->rchild)
-      currNode = currNode->rchild;
-    }
-    ++index;
-  }// fill array     
-  index=0;
-  while (1) {
-    void *val;
-    if ( ( ((val=tree->compare(currNode->val, value_ptr))==currNode->val) && (inserted_newval==0) ) ||
-         ( (inserted_newval==0) && (index==(total_nodes-1))) ) {
-      memcpy( ((char *)value_array)+ (index*(tree->data_size)), value_ptr, tree->data_size );
-      inserted_newval = 1;
-      ++index;
-    }
-    memcpy( ((char *)value_array)+ (index*(tree->data_size)), currNode->val, tree->data_size );
-    ++index;
-    if ((index==total_nodes-1) && (inserted_newval==0)) {
-      memcpy( ((char *)value_array)+ (index*(tree->data_size)), value_ptr, tree->data_size );
-      ++index;
-    }
-    if (index==total_nodes)
-      break;
-    if ( !is_max_node(tree, currNode, max_nodepath) )
-      increment(&currNode);
-  }
-  *min_nodepath_addr = min_nodepath;
-  *max_nodepath_addr = max_nodepath;
-}
-
-static void input_new_node(struct binary_tree *tree, 
-                           unsigned char *spaceloc, 
-                           int len, struct node_ *new_node)
-{
-  struct node_ *currNode = tree->root_node;
-  int index=0;
-  while (index<len-1) {
-    if (spaceloc[index++]==0)
-      currNode = currNode->lchild;
-    else currNode = currNode->rchild;
-  }
-  if (spaceloc[index]==0)
-    currNode->lchild = new_node;
-  else currNode->rchild = new_node;
-  new_node->parent = currNode;
-}
-
-// input the data given by value_array into the tree between minnodepath and maxnodepath
-static void input_reshaped_data(struct binary_tree *tree, 
-                                unsigned char *min_nodepath, 
-                                unsigned char *max_nodepath, 
-                                unsigned char *value_array)
-{
-  struct node_ *currNode = tree->root_node;
-  int index=0;
-  while (min_nodepath[index]!=0) {
-    if (min_nodepath[index++]=='0')
-      currNode = currNode->lchild;
-    else currNode = currNode->rchild;
-  }
-  index=0;
-  while (!is_max_node(tree, currNode, max_nodepath)) { 
-    memcpy(currNode->val, value_array, tree->data_size);
-    value_array+=(tree->data_size);
-    increment(&currNode);
-  }
-  memcpy(currNode->val, value_array, tree->data_size);
 }
 
 // allocates memory for a binary_tree data structure and 
@@ -621,6 +334,7 @@ struct binary_tree *init_null_btree(int data_size,
   root_node->parent = 0;
   root_node->rchild = 0;
   root_node->lchild = 0;
+  root_node->bf = 0;
     
   struct binary_tree *new_btree = malloc(sizeof(struct binary_tree));
   new_btree->root_node = root_node;
@@ -644,10 +358,15 @@ struct binary_tree *init_btree(int data_size,
   struct node_ *root_node = malloc(sizeof(struct node_));
   // null initialize root_node value
   root_node->val = malloc(data_size);
+  if ((root_node->val) == NULL) {
+	printf("Error allocating memory using malloc.\n");
+	exit(EXIT_FAILURE);
+  }
   memset(root_node->val, 0, data_size);  
   root_node->parent = 0;
   root_node->rchild = 0;
   root_node->lchild = 0;
+  root_node->bf = 0;	
 
   struct binary_tree *new_btree = malloc(sizeof(struct binary_tree));
   new_btree->root_node = root_node;
@@ -670,122 +389,165 @@ void btree_insert(struct binary_tree *tree, void *value_ptr)
     ++(tree->NoOfNodes);
   }
   else {
-    if (tree->NoOfNodes==1) { 
-      void *val;
-      if ((val = tree->compare((tree->root_node)->val, value_ptr))!=0) {
-        struct node_* new_node = malloc(sizeof(struct node_));
-        new_node->val = malloc(tree->data_size);
-        memcpy(new_node->val, value_ptr, tree->data_size);
-        new_node->parent = tree->root_node;
-        new_node->lchild = 0;
-        new_node->rchild = 0;
-        if (val==value_ptr) {
-          (tree->root_node)->rchild = new_node;
-          ++(tree->NoOfNodes);
-        }
-        else {
-          (tree->root_node)->lchild = new_node;
-          ++(tree->NoOfNodes);
-        }
-      }
-      return;
-    } // if tree depth (0 starting) is greater than 0.    
-    else {
-      int depth = floor(log_2(tree->NoOfNodes)), index=0;
-      unsigned char parloc[depth];
-      for (int i=0; i<depth; ++i)
-        parloc[i] = 0; // loc of parent node
-      struct node_ *currNode = tree->root_node;
-      void *compRes;
-      while ((compRes = tree->compare(currNode->val, value_ptr))!=0) {
-        if (compRes==(currNode->val)) {
-          if (currNode->lchild) {
-            currNode = currNode->lchild;
-            parloc[index++]='l';
-          }
-          else { 
-            break;
-          }
-        }
-        else if (compRes==value_ptr) {
-          if (currNode->rchild) {
-            currNode = currNode->rchild;
-            parloc[index++]='r';
-          }
-          else 
-            break;
-        } 
-      }// return due to *value_ptr already being in the tree
-      if (!compRes) {
+	struct node_ *new_node = malloc(sizeof(struct node_));
+      	if (new_node == NULL) {
+		printf("Error occurred allocating memory with malloc.\n");
+		exit(EXIT_FAILURE);
+	}		
+	struct node_ *curr_node = tree->root_node;  
+	while (curr_node) {
+		void *val = tree->compare(curr_node->val, value_ptr);
+		if (val == 0) {
+			return; // no insertion occurs  since value is already contained in tree
+		}
+		else if (val == value_ptr) {
+			if (!(curr_node->rchild)) {
+				new_node->val = malloc(tree->data_size);
+				if (new_node->val == NULL) {
+					printf("Error allocating memory with malloc.\n");
+					exit(EXIT_FAILURE);
+				}	
+				memcpy(new_node->val, value_ptr, tree->data_size);
+				new_node->bf = 0;
+				new_node->parent = curr_node;
+				new_node->lchild = NULL;
+				new_node->rchild = NULL;
+				curr_node->rchild = new_node;
+				break;
+			}
+			else {
+				curr_node = curr_node->rchild;
+			}
+		}
+		else {
+			if (!(curr_node->lchild)) {
+				new_node->val = malloc(tree->data_size);
+				if (new_node->val == NULL) {
+                                        printf("Error allocating memory with malloc.\n");
+                                        exit(EXIT_FAILURE);
+                                }
+                                memcpy(new_node->val, value_ptr, tree->data_size);
+                                new_node->bf = 0;
+                                new_node->parent = curr_node;
+				new_node->lchild = NULL;
+				new_node->rchild = NULL;
+                                curr_node->lchild = new_node;
+                                break;
+			}
+			else {
+				curr_node = curr_node->lchild;
+			}
+		}
+	}
+	// retrace
+		
+	while (curr_node) {
+		//printf("here1 ");
+		int curr_node_balance_factor = calc_balance_factor(curr_node);
+		curr_node->bf = curr_node_balance_factor;
+		if ( ((curr_node->bf) <-1) || ((curr_node->bf)>1) ) {
+			// self balancing rotation needs to occur
+			struct node_ *Z = NULL;
+			struct node_ *subtree_parent = curr_node->parent;
+			if ((curr_node->bf) < -1) {
+				Z = curr_node->lchild;
+				if ((Z->bf) <= 0) {
+					if (subtree_parent != NULL) {
+						if ((subtree_parent->lchild)==curr_node) {	
+							struct node_ *subtree_root = rotate_right(curr_node, Z);
+							subtree_root->parent = subtree_parent;
+							subtree_parent->lchild = subtree_root;
+						}		
+						else {
+                                                        struct node_ *subtree_root = rotate_right(curr_node, Z);
+                                                        subtree_root->parent = subtree_parent;
+							subtree_parent->rchild = subtree_root;
+						}	
+					}	
+					else {
+						tree->root_node = rotate_right(curr_node, Z);
+						(tree->root_node)->parent = NULL;						
+					}		
+				}
+				else {
+					if (subtree_parent != NULL) {
+						if ((subtree_parent->lchild) == curr_node) {
+							struct node_ *subtree_root =  rotate_leftright(curr_node, Z);
+							subtree_root->parent = subtree_parent;
+							subtree_parent->lchild = subtree_root;
+						}
+						else {
+							struct node_ *subtree_root = rotate_leftright(curr_node, Z);
+							subtree_root->parent = subtree_parent;
+							subtree_parent->rchild = subtree_root;
+						}
+					}
+					else {
+						tree->root_node = rotate_leftright(curr_node, Z);
+						(tree->root_node)->parent = NULL;
+					}
+				}
+			}
+			else {
+				Z = curr_node->rchild;
+				if ((Z->bf) >= 0) {
+					//printf("HERE0\n");
+					if (subtree_parent != NULL) {
+						if ((subtree_parent->lchild)==curr_node) {
+							//printf("HERE2\n");
+							struct node_ *subtree_root = rotate_left(curr_node, Z);
+							subtree_root->parent = subtree_parent;
+							subtree_parent->lchild = subtree_root;
+						}
+						else {
+							//printf("HERE1\n");
+							struct node_ *subtree_root = rotate_left(curr_node, Z);
+							subtree_parent->rchild = subtree_root; 
+							subtree_root->parent = subtree_parent;
+						}
+					}
+					else {
+						//printf("HERE3\n");
+						tree->root_node = rotate_left(curr_node, Z);
+						(tree->root_node)->parent = NULL;
+					}
+				}
+				else {
+					if (subtree_parent != NULL) {
+                                                if ((subtree_parent->lchild)==curr_node) {
+							struct node_ *subtree_root = rotate_rightleft(curr_node, Z);
+                                                        subtree_root->parent = subtree_parent;
+                                                        subtree_parent->lchild = subtree_root;
+                                                }
+                                                else {
+							struct node_ *subtree_root = rotate_rightleft(curr_node, Z);
+                                                        subtree_root->parent = subtree_parent;
+                                                        subtree_parent->rchild = subtree_root;
+                                                }
+                                        }
+                                        else {
+                                                tree->root_node = rotate_rightleft(curr_node, Z);
+						(tree->root_node)->parent = NULL;
+                                        }
+				}
+			}
+			++(tree->NoOfNodes);
+			return;
+		}
+		curr_node = curr_node->parent;		
+	}
+	++(tree->NoOfNodes);
 	return;
-      }
-      // create node to be inserted
-      struct node_ *new_node = malloc(sizeof(struct node_));
-      new_node->val = malloc(tree->data_size);
-      memcpy(new_node->val, value_ptr, tree->data_size);
-      new_node->lchild = 0;
-      new_node->rchild = 0;
-      if (((tree->NoOfNodes)==1) || ((tree->NoOfNodes)==(pow_2(depth+1)-1))) {
-        new_node->parent = currNode;
-        if (compRes==currNode->val) 
-          currNode->lchild = new_node;
-        else
-          currNode->rchild = new_node;
-        ++(tree->NoOfNodes);
-        return;
-      }
-      else {
-        int parent_depth = 0;
-        while ( parent_depth<depth)  {
-          if (parloc[parent_depth]==0)
-            break;
-          ++parent_depth; 
-        } 
-        if (parent_depth<depth) {  // if parent node is not on maximum tree depth 
-          new_node->parent = currNode;
-          if (compRes==currNode->val) 
-            currNode->lchild = new_node;
-          else
-            currNode->rchild = new_node;
-          ++(tree->NoOfNodes);
-	  //printf("new_node->parent: %p\n", new_node->parent);
-	  //printf("root_node addr: %p\n", tree->root_node);
-          return;
-        }
-        // need to move nodes around to make space for new node.
-        unsigned char spaceloc[depth];// 0 = left, 1 = right; 
-        for (int i=0; i<depth; ++i)
-          spaceloc[i] = 0; 
-        while ( is_available(tree, &(spaceloc[0]), depth)==0 ) 
-          increment_pos( &(spaceloc[0]), depth );
-        int total_nodes=calc_NoOfNodes(tree, &(spaceloc[0]), &(parloc[0]), depth);  // fixed a bug in calc_NoOfNodes
-        void *value_array = malloc(total_nodes*(tree->data_size)); // TODO: check from here
-        unsigned char **min_nodepath_addr = malloc(sizeof(unsigned char *)),
-                      **max_nodepath_addr = malloc(sizeof(unsigned char *));
-        fill_ordered_array(tree, value_array, total_nodes, 
-                           &(spaceloc[0]), &(parloc[0]), 
-                           depth, value_ptr, 
-                           min_nodepath_addr, max_nodepath_addr);
-        input_new_node(tree, &(spaceloc[0]), depth, new_node);
-        input_reshaped_data(tree, *min_nodepath_addr, *max_nodepath_addr, value_array);
-        free(value_array);
-        free(*min_nodepath_addr);
-        free(*max_nodepath_addr);
-        free(min_nodepath_addr);
-        free(max_nodepath_addr);
-        ++tree->NoOfNodes;
-//	printf("tree->NoOfNodes after insert: %d\n", tree->NoOfNodes);
-        return;         
-      }
-    }
+
   }
 }
 
 // delete a specific value from the binary_tree that is given
 // by the data at address value_ptr (tree->data_size bytes of data).
-// Function does nothing if value_ptr is not foudn within the tree.
+// Function does nothing if value_ptr is not foudn within the tree. AVL invariants maintained
 void btree_rem(struct binary_tree *tree, void *value_ptr)
 {
+  //printf("here0\n");
   if ((tree->NoOfNodes)==0)
     return;
   struct node_ *currNode = tree->root_node;
@@ -806,60 +568,365 @@ void btree_rem(struct binary_tree *tree, void *value_ptr)
     tree->NoOfNodes= 0;
    // free((tree->root_node)->val);
     return;
-  } 
-  unsigned char *value_array = malloc((tree->data_size)*(tree->NoOfNodes-1));
-  int depth = floor(log_2(tree->NoOfNodes)), index=0;
-  struct node_ *maxNode = currNode = tree->root_node;
-  while (currNode->lchild) 
-    currNode = currNode->lchild; 
-  while (maxNode->rchild) 
-    maxNode = maxNode->rchild;
-  while (index<(tree->NoOfNodes-1)) {
-    void *val;
-    if ((val = tree->compare(currNode->val, value_ptr))) {
-      memcpy(value_array+(index*(tree->data_size)), currNode->val, tree->data_size);
-      ++index; 
-    }
-    if (currNode!=maxNode)
-    increment(&currNode);
   }
-  unsigned char *bitstring = int_to_bin(pow_2(depth)-1);
-  while ( is_available(tree, bitstring, depth)==1) 
-    decrement_bitstring(bitstring);   
-  currNode = tree->root_node;
-  index = 0;
-  while (index<depth-1) {
-    if (bitstring[index]=='0')
-      currNode = currNode->lchild;
-    else currNode = currNode->rchild;
-    ++index;
-  }  
-  if (bitstring[index]=='0') {
-    free((currNode->lchild)->val);
-    free(currNode->lchild);
-    currNode->lchild = 0;
-  }
-  else {
-    free(currNode->rchild->val);
-    free(currNode->rchild);
-    currNode->rchild = 0;
-  }
-  free(bitstring);
-  maxNode =  currNode = tree->root_node;
-  while (currNode->lchild)
-    currNode = currNode->lchild;
-  while (maxNode->rchild)
-    maxNode = maxNode->rchild;
-  index=0; 
-  while (index<((tree->NoOfNodes)-1)) {
-    memcpy(currNode->val, value_array+(index*(tree->data_size)), tree->data_size);
-    if (currNode!=maxNode)
-    increment(&currNode);
-    ++index;
-  }
-  free(value_array); 
-  --(tree->NoOfNodes);  
-  return;
+  //printf("here1\n");
+  	struct node_ *subtree_root = currNode;
+	if ((currNode->lchild == NULL) && (currNode->rchild ==NULL)) {
+		//printf("HERE0\n");
+		if ((currNode->parent)->lchild == currNode) {
+			(currNode->parent)->lchild = NULL;
+		}
+		else {
+			//printf("HERE0.5\n");
+			(currNode->parent)->rchild = NULL;
+			
+		}
+		subtree_root = currNode->parent;
+		free(currNode->val);
+		free(currNode);
+		tree->NoOfNodes = (tree->NoOfNodes)-1;
+	}
+	else if ( ((currNode->lchild) == NULL) || ((currNode->rchild) == NULL) ) {
+		//printf("HERE1\n");
+	        if ((currNode->lchild) != NULL) {
+			if ((tree->root_node) == currNode) {
+				tree->root_node = currNode->lchild;
+				tree->NoOfNodes = (tree->NoOfNodes)-1;
+				free(currNode->val);
+				free(currNode);
+				subtree_root = tree->root_node;
+				(tree->root_node)->parent = NULL;
+			}				
+			else {
+				if ((currNode->parent)->lchild == currNode) {
+					(currNode->parent)->lchild = currNode->lchild;
+					(currNode->lchild)->parent = currNode->parent;
+					subtree_root = currNode->lchild;
+					free(currNode->val);
+					free(currNode);
+					tree->NoOfNodes = (tree->NoOfNodes)-1;										
+				}
+				else {
+					// (currNode->parent)->rchild = currNode
+					(currNode->parent)->rchild = currNode->lchild;
+					(currNode->lchild)->parent = currNode->parent;
+					subtree_root = currNode->lchild;
+					free(currNode->val);
+					free(currNode);
+					tree->NoOfNodes = (tree->NoOfNodes)-1;
+				}
+			}
+	        }
+		else {
+			if ((tree->root_node)==currNode) {
+				tree->root_node = currNode->rchild;
+				(tree->root_node)->parent = NULL;
+				tree->NoOfNodes = (tree->NoOfNodes)-1;
+				free(currNode->val);
+				free(currNode);
+				subtree_root = tree->root_node;
+			}
+			else {
+				if ((currNode->parent)->lchild == currNode) {
+					(currNode->parent)->lchild = currNode->rchild;
+					(currNode->rchild)->parent = currNode->parent;
+					subtree_root = currNode->rchild;
+					free(currNode->val);
+					free(currNode);
+					tree->NoOfNodes = (tree->NoOfNodes)-1;
+				}
+				else {	
+					// (currNode->parent)->rchild == currNode
+					(currNode->parent)->rchild = currNode->rchild;
+					(currNode->rchild)->parent = currNode->parent;
+					subtree_root = currNode->rchild;
+					free(currNode->val);
+					free(currNode);
+					tree->NoOfNodes = (tree->NoOfNodes)-1;
+				}	
+			}
+		}
+	
+	}
+	else {
+		//printf("HERE2\n");
+		// currNode has two children
+		if ((currNode->rchild)->lchild == NULL) {
+			// currNodes successor is currNode->rchild
+			(currNode->rchild)->lchild = currNode->lchild;
+			(currNode->lchild)->parent = currNode->rchild;
+			(currNode->rchild)->parent = currNode->parent;
+			if (currNode->parent) {
+				if ((currNode->parent)->rchild == currNode) {
+					(currNode->parent)->rchild = currNode->rchild;
+				}
+				else {
+					(currNode->parent)->lchild = currNode->rchild;
+				}
+			}
+			else {
+				tree->root_node = currNode->rchild;
+				(tree->root_node)->parent = NULL;
+			}
+			subtree_root = currNode->rchild;
+			free(currNode->val);
+			free(currNode);
+			tree->NoOfNodes = (tree->NoOfNodes)-1;
+		}
+		else {
+				
+			// succ is the node that comes numerically after currNode in the tree, succ for successor
+			struct node_ *succ = (currNode->rchild)->lchild;
+			while (succ->lchild) {
+				succ = succ->lchild;
+			}
+			(succ->parent)->lchild = succ->rchild;
+			if (succ->rchild) {
+				(succ->rchild)->parent = succ->parent;
+				subtree_root = succ->rchild;
+			}
+			else {
+				subtree_root = succ->parent;
+			}
+			succ->lchild = currNode->lchild;
+			succ->rchild = currNode->rchild;
+			currNode->lchild->parent = succ;
+			currNode->rchild->parent = succ;
+			if (tree->root_node == currNode) {
+				tree->root_node = succ;
+				succ->parent = NULL;
+			}
+			else {
+				succ->parent = currNode->parent;
+				if ((currNode->parent)->lchild == currNode) {
+					(currNode->parent)->lchild = succ;
+				}
+				else {
+					(currNode->parent)->rchild = succ;
+				}
+			}
+			//printf("succ->val: %d\n", *((int *)(succ->val)));
+			free(currNode->val);
+                        free(currNode);
+                        tree->NoOfNodes = (tree->NoOfNodes)-1;
+
+		}
+	}
+	struct node_ *curr_node = subtree_root;
+	int curr_node_bf = calc_balance_factor(curr_node);
+	curr_node->bf = curr_node_bf;
+	while ((curr_node_bf <2) && (curr_node_bf>-2)) {
+		curr_node = curr_node->parent;
+		if (curr_node == NULL) {
+			break;
+		}
+		curr_node_bf = calc_balance_factor(curr_node);
+		curr_node->bf = curr_node_bf;
+	}
+	if (curr_node == NULL) {
+		return; // retraced with AVL invariant maintained
+	}
+	//curr_node->bf == +2 or -2  
+	struct node_ *subtree_parent = NULL;
+	struct node_ *X = curr_node;
+	
+	if ((X->bf)>1) {
+		struct node_ *Z = X->rchild;
+		if ((Z->bf)>=0) {
+			if ((X->parent) != NULL) {
+				if ((X->parent)->lchild == X) {
+					subtree_parent = X->parent;
+					struct node_ *subtree_root = rotate_left(X,Z);
+					subtree_root->parent = subtree_parent;
+					subtree_parent->lchild =subtree_root;
+				}
+				else {
+					subtree_parent = X->parent;
+                                        struct node_ *subtree_root = rotate_left(X,Z);
+                                        subtree_root->parent = subtree_parent;
+                                        subtree_parent->rchild =subtree_root;					
+				}
+			}
+			else {
+				tree->root_node = rotate_left(X,Z);
+				(tree->root_node)->parent = NULL;
+			}
+			
+		}
+		else {
+			if ((X->parent) != NULL) {
+                                if ((X->parent)->lchild == X) {
+                                        subtree_parent = X->parent;
+                                        struct node_ *subtree_root = rotate_rightleft(X,Z);
+                                        subtree_root->parent = subtree_parent;
+                                        subtree_parent->lchild =subtree_root;
+                                }
+                                else {
+                                        subtree_parent = X->parent;
+                                        struct node_ *subtree_root = rotate_rightleft(X,Z);
+                                        subtree_root->parent = subtree_parent;
+                                        subtree_parent->rchild =subtree_root;
+                                }
+                        }
+                        else {
+                                tree->root_node = rotate_rightleft(X,Z);
+				(tree->root_node)->parent = NULL;
+                        }
+		}
+	}
+	else if ((X->bf)<-1) {
+		//printf("getting there\n");
+		struct node_ *Z = X->lchild;
+		if ((Z->bf)<=0) {
+                        if ((X->parent) != NULL) {
+                                if ((X->parent)->lchild == X) {
+                                        subtree_parent = X->parent;
+                                        struct node_ *subtree_root = rotate_right(X,Z);
+                                        subtree_root->parent = subtree_parent;
+                                        subtree_parent->lchild =subtree_root;
+                                }
+                                else {
+                                        subtree_parent = X->parent;
+                                        struct node_ *subtree_root = rotate_right(X,Z);
+                                        subtree_root->parent = subtree_parent;
+                                        subtree_parent->rchild =subtree_root;
+                                }
+                        }
+                        else {  
+                                tree->root_node = rotate_right(X,Z);
+				(tree->root_node)->parent = NULL;
+                        }
+                }
+                else {
+                        if ((X->parent) != NULL) {
+                                if ((X->parent)->lchild == X) {
+                                        subtree_parent = X->parent;
+                                        struct node_ *subtree_root = rotate_leftright(X,Z);
+                                        subtree_root->parent = subtree_parent;
+                                        subtree_parent->lchild =subtree_root;
+                                }
+                                else {
+                                        subtree_parent = X->parent;
+                                        struct node_ *subtree_root = rotate_leftright(X,Z);
+                                        subtree_root->parent = subtree_parent;
+                                        subtree_parent->rchild =subtree_root;
+                                }
+                        }
+                        else {
+                                tree->root_node = rotate_leftright(X,Z);
+				(tree->root_node)->parent = NULL;
+                        }
+                }
+	}
+	if (subtree_parent != NULL) {
+		while (subtree_parent != NULL) {
+			struct node_ *curr_node = subtree_parent;
+			int curr_node_bf = calc_balance_factor(curr_node);
+			curr_node->bf = curr_node_bf;
+			struct node_ *X = curr_node;
+			int X_bf = calc_balance_factor(X);
+			X->bf = X_bf;
+			if ( ((X->bf) <-1) || ((X->bf)>1) ) {
+				struct node_ *Z = NULL;
+				if ((X->bf) < -1) {
+					Z = X->lchild;
+					if ((Z->bf) <= 0) {
+						if (X->parent) {
+							if ((X->parent)->lchild == X) {
+								subtree_parent = X->parent;
+								struct node_ *subtree_root = rotate_right(X,Z);
+								subtree_parent->lchild = subtree_root;
+								subtree_root->parent = subtree_parent;	
+							}
+							else {
+								subtree_parent = X->parent;
+								struct node_ *subtree_root = rotate_right(X,Z);
+								subtree_parent->rchild = subtree_root;
+								subtree_root->parent = subtree_parent; 
+							}
+						}
+						else {
+							tree->root_node = rotate_right(X,Z);
+							(tree->root_node)->parent = NULL;
+							subtree_parent = NULL;
+						}
+					}
+					else {
+						if (X->parent) {
+							if ((X->parent)->lchild == X) {
+								subtree_parent = X->parent;
+								struct node_ *subtree_root = rotate_leftright(X,Z);
+								subtree_parent->lchild = subtree_root;
+								subtree_root->parent = subtree_parent; 
+							}
+							else {
+								subtree_parent = X->parent;
+								struct node_ *subtree_root = rotate_leftright(X,Z);
+								subtree_parent->rchild = subtree_root;
+								subtree_root->parent = subtree_parent;
+							}
+						}
+						else {
+							tree->root_node = rotate_leftright(X,Z);
+							(tree->root_node)->parent = NULL;
+							subtree_parent = NULL;
+						}
+
+					}
+				}
+				else  {
+					Z = X->rchild;
+					if ((Z->bf) >= 0) {
+						if (X->parent) {
+							if ((X->parent)->lchild == X) {
+								subtree_parent = X->parent;
+								struct node_ *subtree_root = rotate_left(X,Z);
+								subtree_parent->lchild = subtree_root;
+								subtree_root->parent = subtree_parent; 
+							}
+							else {
+								subtree_parent = X->parent;
+								struct node_ *subtree_root = rotate_left(X,Z);
+								subtree_parent->rchild = subtree_root;
+								subtree_root->parent = subtree_parent;
+							}
+						}
+						else {
+							tree->root_node = rotate_left(X,Z);
+							(tree->root_node)->parent = NULL;
+							subtree_parent = NULL;
+						}
+					}
+					else {
+						if (X->parent) {
+							if ((X->parent)->lchild == X) {
+								subtree_parent = X->parent;
+								struct node_ *subtree_root = rotate_rightleft(X,Z);
+								subtree_parent->lchild = subtree_root;
+								subtree_root->parent = subtree_parent;
+							}
+							else {
+								subtree_parent = X->parent;
+								struct node_ *subtree_root = rotate_rightleft(X,Z);
+								subtree_parent->rchild = subtree_root;
+								subtree_root->parent = subtree_parent;
+							}
+						}
+						else {
+							tree->root_node = rotate_rightleft(X,Z);
+							(tree->root_node)->parent = NULL;
+							subtree_parent = NULL;
+						}
+
+					}
+				}
+			}
+			subtree_parent = X->parent;
+		}
+	}
+
+
+	
 }
 
 // Search the binary_tree struct given at the address tree
@@ -918,8 +985,11 @@ void print_btree(struct binary_tree *tree)
 {
   printf("\nprinting tree\n");
   struct node_ *currNode = tree->root_node;
-  while (currNode->lchild)
+  int counter = 0;
+  while (currNode->lchild) {
     currNode = currNode->lchild;
+    ++counter;
+  }
   int index = 0;
   while (index++<(tree->NoOfNodes)) {
     tree->print(currNode->val);
@@ -931,12 +1001,22 @@ void print_btree(struct binary_tree *tree)
 
 void free_btree(struct binary_tree *tree)
 {
-  	if ((tree->NoOfNodes) == 0) {
+	if ((tree->NoOfNodes)<=1) {
 		free((tree->root_node)->val);
-		free(tree->root_node);	
+		free(tree->root_node);
+		return;
+	}
+
+	int left_subtree_height = calculate_node_height((tree->root_node)->lchild);
+	int right_subtree_height = calculate_node_height((tree->root_node)->rchild);
+	int tree_depth = -1;
+	if (left_subtree_height > right_subtree_height) {
+		tree_depth = left_subtree_height;
 	}
 	else {
-		int tree_depth = floor(log_2(tree->NoOfNodes));
+		tree_depth = right_subtree_height;
+	}
+
 		for (int i=tree_depth; i>=0; --i) {
 			unsigned int NoOfNodes = pow_2(i); // The maximum number of Nodes on the current ith level of the tree
 			unsigned int bitmask_length = i/8;
@@ -1021,8 +1101,9 @@ void free_btree(struct binary_tree *tree)
 				free(curr_node);
 			}
 		}
-	}	
+		
 	free(tree);
+
 }
 
 
@@ -1058,3 +1139,5 @@ void *btree_get(struct binary_tree *tree, int index)
 	}	
 	return curr_node->val;
 }
+
+

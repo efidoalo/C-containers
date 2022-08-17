@@ -14,10 +14,45 @@
 #define BINARY_TREE_H
 
 
-struct node_;
+struct node_ {
+
+  // pointer to node value
+  void *val;
+
+  // balance factor
+  char bf;  // takes values in the range [-2,+2]
+
+  // pointers to associated nodes
+  struct node_ *parent;
+  struct node_ *rchild;
+  struct node_ *lchild;
+
+};
+
 // 
 
-struct binary_tree;
+struct binary_tree {
+
+  // pointer to root nodei
+  struct node_ *root_node;
+
+  /* pointer to a function that takes the addresses of two instantiated objects
+  of the data type that each node points to with its val member. The function
+  returns the address of the object that is greater. If both objects are
+  considered equal, the null pointer is returned. */
+  void *(*compare) (void *v1, void *v2);
+
+  // pointer to function that takes as a parameter a pointer to an instantiated object
+  // of the data type pointed to by each nodes val member. Function prints the object
+  // pointed to by its parameter to the terminal.
+  void (*print) (void *);
+
+  // size in bytes of the object stored at each node
+  int data_size;
+
+  // Number of total nodes in binary tree
+  int NoOfNodes;
+};
 
 
 // allocates memory for a binary_tree data structure and 
