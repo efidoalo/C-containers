@@ -12,8 +12,9 @@
 
 struct vector;
 
-// creates a vector with capacity 10, size 0. Each elem being of size data_size bytes
-struct vector *vector_null_init(int data_size);
+// creates a vector with capacity 10, size 0. Each elem being of size data_size bytes. print is a function that prints to the terminal an element whose address'
+// is given as the only arguement
+struct vector *vector_null_init(int data_size, void (*print)(void *) );
 
 // Returns the current size (how many elements are stored in the vector)
 int vector_get_size(struct vector *vect);
@@ -57,10 +58,23 @@ void vector_remove(struct vector *vect, int index);
 // instances are considered equal then compare returns the null pointer.
 void vector_sort(struct vector *vect, void *(*compare)(void *, void *));
 
+// inserts the data element pointer to by d into the vector vect where cmp
+// is a comparison function that compares the addresses of two data elements 
+// of the array and returns the address of the "greater" data element. cmp 
+// returns NULL if the data elements are considered equal.
+// vector_insert sorts the vector vect and inserts d so that the data elements
+// of vect are in increasing order as the data index increases using the cmp
+// funcion. If d is already in vect, this function does nothing if the vector
+// is already sorted, otherwise it ill sort the vector and return.
+void vector_insert(struct vector *vect, void *(*cmp)(void *, void *), void *d);
+
 // Function that returns a dynamically allocated array of length
 // (v->data_size)*(v->size) containing all of the contents of v. This array
 // must be eventually freed. If v->size ==0, 0 is returned (null pointer)
 void *vector_get_elems(struct vector *v);
+
+// Prints all the elements in a vector to the terminal
+void vector_print(struct vector *v);
 
 // frees all memory associated with vect
 void vector_free(struct vector *vect);

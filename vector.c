@@ -10,12 +10,19 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+#include <stdint.h>
 
 struct vector { 
   int size;      // number of elements that the vector is holding
   int capacity;  // number of possible elements the vector can hold
   int data_size; // size of each element in bytes
   void *elem;    // dynamically allocated block of memory that holds the elements
+  void (*print) (void *v); // Function that prints to the terminal the value
+			 // of the element whose address is givien in the 
+			 // arguement. (This function is used to print all
+			 // elements in the vector)  
 };
 
 
@@ -43,7 +50,7 @@ int vector_search(struct vector *v, void *data)
 }
 
 // creates a vector with capacity 10, size 0. Each elem being of size data_size bytes
-struct vector *vector_null_init(int data_size) {
+struct vector *vector_null_init(int data_size, void (*print) (void *v)) {
 
   struct vector *vect = malloc(sizeof(struct vector));
   vect->size = 0;
@@ -51,6 +58,7 @@ struct vector *vector_null_init(int data_size) {
   vect->data_size = data_size;
   vect->elem = malloc(10*data_size);
   memset(vect->elem, 0, 10*data_size);
+  vect->print = print;
   return vect;
 
 }
@@ -222,9 +230,130 @@ void *vector_get_elems(struct vector *v)
   }
 }
 
+void vector_print(struct vector *vect)
+{
+	for (int index=0; index<(vect->size); ++index) {
+		vect->print(&(((unsigned char *)vect->elem)[index*(vect->data_size)]));
+		printf(" ");
+	}
+}
+
 // frees all memory associated with vector pointed to by vect
 void vector_free(struct vector *vect)
 {
   free(vect->elem);
   free(vect);
+}
+
+void vector_insert(struct vector *vect, void *(*cmp)(void *, void *), void *d)
+{
+	if ((vect->size) == 0) {
+		memcpy(vect->elem, d, vect->data_size);
+		vect->size = vect->size + 1;
+		return;
+	}
+	else {
+		uint8_t vector_already_sorted = 1;
+		for (int i=0; i<(vector_get_size(vect)-1); ++i) {
+			void *ith_elem = &(((unsigned char *)(vect->elem))[i*(vect->data_size)]);
+			void *iplus_one_elem = &(((unsigned char *)vect->elem)[(i+1)*(vect->data_size)]);
+			void *cmp_res = cmp(ith_elem, iplus_one_elem);
+			if (cmp_res == ith_elem) {
+				vector_already_sorted = 0;
+				break;
+			}
+		}
+		if (!vector_already_sorted) {
+			vector_sort(vect, cmp);
+		}
+		if (vector_search(vect, d) >= 0) {
+			// d already in vect
+			return;
+		}
+		if ((vect->size) == (vect->capacity)) {
+			void *new_elem = malloc((vect->capacity)*2*(vect->data_size));
+			if (new_elem == NULL) {
+				printf("Error allocating memory during vector"
+				       " insertion. %s.\n", strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+			memcpy(new_elem, vect->elem, (vect->capacity)*(vect->data_size)	);
+			free(vect->elem);
+			vect->elem = new_elem;
+			vect->capacity = (vect->capacity)*2;
+		}
+		if ((vect->size) == 1) {
+			if (cmp(&(((unsigned char *)(vect->elem))[0]), d) == d) {
+				memcpy(&(((unsigned char *)(vect->elem))[1*(vect->data_size)]),
+				       d,
+		       		       vect->data_size);			
+			}
+			else {
+				memcpy(&(((unsigned char *)(vect->elem))[1*(vect->data_size)]),
+				       &(((unsigned char *)(vect->elem))[0]), vect->data_size);
+				memcpy(&(((unsigned char *)(vect->elem))[0]), d, vect->data_size);
+			}
+			vect->size = vect->size + 1;
+			return;
+		}
+		int lower_index = 0;
+		int upper_index = (vect->size)-1;
+		int middle_index = (lower_index + upper_index)/2;
+		void *least_elem = &(((unsigned char *)(vect->elem))[0]);
+		void *largest_elem = &(((unsigned char *)(vect->elem))[((vect->size)-1)*(vect->data_size)]);
+
+		if (cmp(least_elem, d) == least_elem) {
+			for (int i=(vect->size); i>0; --i) {
+				memcpy(&(((unsigned char *)(vect->elem))[i*(vect->data_size)]),
+				       &(((unsigned char *)(vect->elem))[(i-1)*(vect->data_size)]),
+			               vect->data_size);	       
+			}		
+			memcpy(&(((unsigned char *)(vect->elem))[0]), d, vect->data_size);
+			vect->size = vect->size + 1;
+			return;
+		}
+		if (cmp(largest_elem, d)==d) {
+			//vector_print(vect);
+			//printf("here0\n");
+			memcpy(&(((unsigned char *)(vect->elem))[(vect->size)*(vect->data_size)]),
+				d,
+				vect->data_size);
+			vect->size = vect->size + 1;
+			return;
+		}
+		while (1) {
+			void *middle_elem = &(((unsigned char *)(vect->elem))[middle_index*(vect->data_size)]);
+			void *cmp_res = cmp(middle_elem,
+					    d);
+			if ((cmp_res == d) && ((middle_index + 1)==(upper_index))) {
+				// d is between middle_index and upper_index
+				for (int i= vect->size; i>middle_index+1; --i) {
+					memcpy(&(((unsigned char *)(vect->elem))[i*(vect->data_size)]),
+					       &(((unsigned char *)(vect->elem))[(i-1)*(vect->data_size)]),
+					       vect->data_size);
+				}
+				memcpy(&(((unsigned char *)(vect->elem))[(middle_index+1)*(vect->data_size)]), d, vect->data_size);
+				vect->size = vect->size + 1;
+				return;
+			}
+			if ((cmp_res == middle_elem) && ((middle_index -1)==(lower_index))) {
+                                // d is between middle_index and lower_index
+                                for (int i= vect->size; i>middle_index; --i) {
+                                        memcpy(&(((unsigned char *)(vect->elem))[i*(vect->data_size)]),
+                                               &(((unsigned char *)(vect->elem))[(i-1)*(vect->data_size)]),
+                                               vect->data_size);
+                                }
+                                memcpy(&(((unsigned char *)(vect->elem))[middle_index*(vect->data_size)]), d, vect->data_size);
+                                vect->size = vect->size + 1;
+                                return;
+                        }
+			if (cmp_res == d) {
+				lower_index = middle_index;
+			}
+			else if (cmp_res == middle_elem) {
+				upper_index = middle_index;			
+			}
+			middle_index = (lower_index + upper_index)/2;	
+		}
+	}
 }
